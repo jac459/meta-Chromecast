@@ -1,0 +1,65 @@
+{ "name":"Chromecast",
+  "manufacturer":"Google",
+  "type":"Audio",
+  "version":16,
+  "discover":{
+    "welcomeheadertext":"Chromecast Driver",
+    "welcomedescription":"powered by meta\nby JAC459",
+    "command":{"type":"static", "command":"$LocalDevices", "queryresult":["$.*[?(@.name=='googlecast')]^"]}
+  },
+  "template" : {
+    "name":"Chromecast", 
+    "dynamicname":"DYNAMIK_INST_START DYNAMIK JSON.parse(\"$Result\").name DYNAMIK_INST_END",
+    "dynamicid":"DYNAMIK_INST_START DYNAMIK JSON.parse(\"$Result\").name + \" - \" + JSON.parse(\"$Result\").addresses[0] DYNAMIK_INST_END",
+    "manufacturer":"Google",
+    "version":16,
+    "type":"Audio",
+    "listeners" : {
+      "StatusPing" : {"type":"static", "command":"", "pooltime":"3000", "poolduration":"", "queryresult" : "$.", "evaldo":[{"test":"DYNAMIK $Connector", "then":"__STATUS_MQTT", "or":"__STATUS_MQTT"}]},
+      "Status" : {"type":"mqtt", "command":"Chromecast/out/$MyChromecastIp", "queryresult" : "", "evalwrite" : [ {"variable" : "VolumePlayed", "value" : "DYNAMIK Math.round(100*JSON.parse(\"$Result\").volume.level)"}]},
+      "SeekMQTT" : {"type":"mqtt", "command":"Volumio/play2", "queryresult" : "", "evalwrite" : [ {"variable" : "MusicURI", "value" : "$Result"}]},
+      "MusicBrowsing" : {"type":"mqtt", "command":"Chromecast", "queryresult" : "", "evalwrite" : [ {"variable" : "MusicURI", "value" : "$Result"}]}
+    },     
+    "variables":{
+      "MyChromecastIp":"DYNAMIK_INST_START DYNAMIK JSON.parse(\"$Result\").addresses[0] DYNAMIK_INST_END",
+      "MyChromecastId":"DYNAMIK_INST_START DYNAMIK JSON.parse(\"$Result\").name + \" - \" + JSON.parse(\"$Result\").addresses[0] DYNAMIK_INST_END",
+      "Status":"Ready",
+      "MusicURI": "",
+      "Seek": "",
+      "Mute":"",
+      "VolumePlayed":"",
+      "Connector":false
+    },
+
+    "labels":{  
+      "Status" : {"label":" ", "listen":"Status"},
+      "Debug" : {"label":" ", "listen":"MusicURI"}
+    },
+    "switches":{
+      "Connector" : {"label":"CATT <=> MQTT", "listen":"Connector", "evalwrite":[{"variable":"Connector", "value":"DYNAMIK (\"$Connector\" == \"true\") ? \"false\":\"true\""}]}
+    },
+    "sliders":{
+      "SEEK": {"label":"Seek", "unit" : "%", "listen" : "Seek", "evaldo":[{"test":"DYNAMIK $Connector", "then":"__SEEK_MQTT", "or":"__SEEK_CATT"}]},
+      "VOLUME": {"label":"Volume", "unit" : "db", "listen" : "VolumePlayed"}
+    },
+    "buttons":{
+      "POWER ON": {"label":"", "type":"static", "command":"", "evaldo":[{"test":true,"then":"__INITIALISE", "or":""}]},
+      "POWER OFF": {"label":"", "type":"static", "command":"", "evaldo":[{"test":true,"then":"__CLEANUP", "or":""}]},
+      "VOLUME UP": {"label":"", "type":"static", "command":"", "evalwrite":[{"variable":"VolumePlayed","value":"DYNAMIK (Number($VolumePlayed)<95)?Number($VolumePlayed)+5:100"}]},
+      "VOLUME DOWN": {"label":"", "type":"static", "command":"", "evalwrite":[{"variable":"VolumePlayed","value":"DYNAMIK (Number($VolumePlayed)>5)?Number($VolumePlayed)-5:0"}]},
+      "STOP": {"label":"", "type":"static", "command":"", "queryresult":""},
+       "PLAY": {"label":"", "type":"static", "command":"", "queryresult":""}
+     },
+     "directories":{
+      "Collection": {"label":"Radios", 
+        "feeders": {
+          "Collections":{"label":"Collections list", 
+            "commandset": [{"type":"static", "command":"[{\"logo\":\"https://susanmoriarty.com.au/wp-content/uploads/2020/08/abc-news-logo-1.jpg\", \"stream\":\"http://www.abc.net.au/res/streaming/audio/mp3/news_radio.pls\"}, {\"logo\":\"https://en.wikipedia.org/wiki/Radio_National#/media/File:Rnlogo.png\", \"stream\":\"http://www.abc.net.au/res/streaming/audio/mp3/radio_national.pls\"}, {\"logo\":\"https://www.abc.net.au/cm/rimage/10307630-1x1-thumbnail.png?v=13\", \"stream\":\"http://www.abc.net.au/res/streaming/audio/mp3/grandstand.pls\"}, {\"logo\":\"https://d24j9r7lck9cin.cloudfront.net/l/o/5/5664.1430597396.png\", \"stream\":\"http://www.abc.net.au/res/streaming/audio/mp3/triplej.pls\"}, {\"logo\":\"https://tonedeaf.thebrag.com/wp-content/uploads/2018/12/unearthed-768x396.jpg\", \"stream\":\"http://www.abc.net.au/res/streaming/audio/mp3/unearthed.pls\"}, {\"logo\":\"https://www.abc.net.au/cm/lb/8811932/thumbnail/station-logo-thumbnail.jpg\", \"stream\":\"http://www.abc.net.au/res/streaming/audio/mp3/dig_music.pls\"}, {\"logo\":\"https://www.abc.net.au/cm/rimage/7963856-1x1-thumbnail.png?v=11\", \"stream\":\"http://www.abc.net.au/res/streaming/audio/mp3/local_melbourne.pls\"}]", 
+              "queryresult":"$.*", "itemtype":"tile", "itemimage":"DYNAMIK JSON.parse(\"$Result\").logo", "evalwrite":[{"variable":"MusicURI","value":"DYNAMIK JSON.parse(\"$Result\").stream"}], "itemaction":"PLAY_RADIO"}] 
+          },
+          "PLAY_RADIO":{"label":"", "commandset": [{"type":"mqtt", "command":"{\"topic\":\"Chromecast/$MyChromecastId/url\", \"message\":\"$MusicURI\"}"}]}
+        }
+      }
+    }
+  }
+}
